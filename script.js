@@ -199,7 +199,7 @@ function renderTaskList(tasks) {
 
 function redrawTaskList() {
   taskList.innerHTML = tempTasks.map((t, i) => `
-    <div class="task-item">
+    <div class="task-item" draggable="true" data-index="${i}">
       <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
         onchange="toggleTask(${i})" />
       <div class="task-text-wrap">
@@ -213,6 +213,34 @@ function redrawTaskList() {
       <button class="btn-small" onclick="commitTask()">ADD</button>
     </div>
   `;
+
+  // Drag-and-drop logic
+  let dragSrcIndex = null;
+
+  taskList.querySelectorAll('.task-item').forEach(item => {
+    item.addEventListener('dragstart', () => {
+      dragSrcIndex = parseInt(item.dataset.index);
+      item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      taskList.querySelectorAll('.task-item').forEach(el => el.classList.remove('drag-over'));
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      taskList.querySelectorAll('.task-item').forEach(el => el.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      const targetIndex = parseInt(item.dataset.index);
+      if (dragSrcIndex === null || dragSrcIndex === targetIndex) return;
+      const moved = tempTasks.splice(dragSrcIndex, 1)[0];
+      tempTasks.splice(targetIndex, 0, moved);
+      dragSrcIndex = null;
+      redrawTaskList();
+    });
+  });
 }
 
 window.toggleTask = function(i) {
