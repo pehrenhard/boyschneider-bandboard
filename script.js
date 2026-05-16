@@ -6,6 +6,9 @@
 // ---- CONFIG ----
 // Change this to your own code before uploading!
 const ACCESS_CODE = 'BAND2025';
+const JB_BIN_ID  = '6a08e1b9c0954111d833cc82';
+const JB_API_KEY = '$2a$10$mKABUNWen4x.00rTvx0kc.WCGi6RCFrW6Dzv2IS7eug/v4rqeIaAW';
+const JB_API     = `https://api.jsonbin.io/v3/b/${JB_BIN_ID}`;
 
 // ---- STATE ----
 let projects = [];
@@ -14,23 +17,39 @@ let currentProjectId = null;
 let currentMoodId = null;
 
 // ---- STORAGE ----
-function save() {
-  localStorage.setItem('bb_projects', JSON.stringify(projects));
-  localStorage.setItem('bb_mood', JSON.stringify(moodCards));
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
-function load() {
+async function load() {
   try {
-    projects = JSON.parse(localStorage.getItem('bb_projects')) || [];
-    moodCards = JSON.parse(localStorage.getItem('bb_mood')) || [];
+    const res = await fetch(JB_API + '/latest', {
+      headers: { 'X-Access-Key': JB_API_KEY }
+    });
+    const data = await res.json();
+    projects  = data.record.projects  || [];
+    moodCards = data.record.moodCards || [];
   } catch(e) {
-    projects = [];
+    console.error('Failed to load from JSONBin', e);
+    projects  = [];
     moodCards = [];
   }
 }
 
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+async function save() {
+  try {
+    await fetch(JB_API, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Access-Key':  JB_API_KEY,
+      },
+      body: JSON.stringify({ projects, moodCards }),
+    });
+  } catch(e) {
+    console.error('Failed to save to JSONBin', e);
+    alert('Save failed — check your connection.');
+  }
 }
 
 // ---- GATE ----
@@ -408,8 +427,8 @@ function escAttr(str) {
 }
 
 // ---- INIT ----
-function renderAll() {
-  load();
+async function renderAll() {
+  await load();
   renderProjects();
   renderMoodBoard();
 }
