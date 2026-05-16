@@ -1,0 +1,415 @@
+/* =============================================
+   BAND BOARD — Script
+   All data stored in localStorage
+   ============================================= */
+
+// ---- CONFIG ----
+// Change this to your own code before uploading!
+const ACCESS_CODE = 'BAND2025';
+
+// ---- STATE ----
+let projects = [];
+let moodCards = [];
+let currentProjectId = null;
+let currentMoodId = null;
+
+// ---- STORAGE ----
+function save() {
+  localStorage.setItem('bb_projects', JSON.stringify(projects));
+  localStorage.setItem('bb_mood', JSON.stringify(moodCards));
+}
+
+function load() {
+  try {
+    projects = JSON.parse(localStorage.getItem('bb_projects')) || [];
+    moodCards = JSON.parse(localStorage.getItem('bb_mood')) || [];
+  } catch(e) {
+    projects = [];
+    moodCards = [];
+  }
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// ---- GATE ----
+const gate = document.getElementById('gate');
+const app = document.getElementById('app');
+const gateInput = document.getElementById('gateInput');
+const gateBtn = document.getElementById('gateBtn');
+const gateError = document.getElementById('gateError');
+const lockBtn = document.getElementById('lockBtn');
+
+function unlock() {
+  const val = gateInput.value.trim().toUpperCase();
+  if (val === ACCESS_CODE.toUpperCase()) {
+    gate.classList.add('hidden');
+    app.classList.remove('hidden');
+    gateError.textContent = '';
+    gateInput.value = '';
+    renderAll();
+  } else {
+    gateError.textContent = 'WRONG CODE. TRY AGAIN.';
+    gateInput.value = '';
+    gateInput.focus();
+  }
+}
+
+gateBtn.addEventListener('click', unlock);
+gateInput.addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
+document.addEventListener('DOMContentLoaded', () => gateInput.focus());
+
+lockBtn.addEventListener('click', () => {
+  app.classList.add('hidden');
+  gate.classList.remove('hidden');
+  gateInput.focus();
+});
+
+// ---- TABS ----
+const tabs = document.querySelectorAll('.tab');
+const tabContents = document.querySelectorAll('.tab-content');
+
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tabContents.forEach(c => c.classList.add('hidden'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+  });
+});
+
+// ---- PROJECTS ----
+const projectList = document.getElementById('projectList');
+const projectModal = document.getElementById('projectModal');
+const addProjectBtn = document.getElementById('addProjectBtn');
+const closeProjectModal = document.getElementById('closeProjectModal');
+const saveProjectBtn = document.getElementById('saveProjectBtn');
+const deleteProjectBtn = document.getElementById('deleteProjectBtn');
+const addTaskBtn = document.getElementById('addTaskBtn');
+const taskList = document.getElementById('taskList');
+
+// Fields
+const editProjectName = document.getElementById('editProjectName');
+const editProjectDeadline = document.getElementById('editProjectDeadline');
+const editProjectPriority = document.getElementById('editProjectPriority');
+const editProjectDesc = document.getElementById('editProjectDesc');
+const modalProjectTitle = document.getElementById('modalProjectTitle');
+
+function deadlineStatus(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr);
+  const diff = Math.ceil((d - today) / 86400000);
+  if (diff < 0) return 'overdue';
+  if (diff <= 7) return 'soon';
+  return 'ok';
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function renderProjects() {
+  if (!projects.length) {
+    projectList.innerHTML = `<div class="empty-state"><strong>NO PROJECTS YET</strong>hit + NEW PROJECT to get started</div>`;
+    return;
+  }
+
+  projectList.innerHTML = projects.map(p => {
+    const done = (p.tasks || []).filter(t => t.done).length;
+    const total = (p.tasks || []).length;
+    const ds = deadlineStatus(p.deadline);
+    const dlClass = ds === 'overdue' ? 'overdue' : ds === 'soon' ? 'soon' : '';
+    const dlLabel = p.deadline
+      ? (ds === 'overdue' ? '⚠ ' : ds === 'soon' ? '→ ' : '') + formatDate(p.deadline)
+      : '';
+
+    return `
+      <div class="project-card" data-id="${p.id}" data-priority="${p.priority}" onclick="openProject('${p.id}')">
+        <div class="project-card-header">
+          <div class="project-card-name">${escHtml(p.name || 'Untitled')}</div>
+          <span class="priority-badge badge-${p.priority}">${p.priority.toUpperCase()}</span>
+        </div>
+        ${p.description ? `<div class="project-card-desc">${escHtml(p.description)}</div>` : ''}
+        <div class="project-card-meta">
+          <div class="task-count">
+            <span class="task-done">${done} done</span>
+            <span>/ ${total} tasks</span>
+          </div>
+          ${dlLabel ? `<div class="deadline ${dlClass}">${dlLabel}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function openProject(id) {
+  const p = id ? projects.find(x => x.id === id) : null;
+  currentProjectId = id || null;
+
+  if (p) {
+    editProjectName.value = p.name || '';
+    editProjectDeadline.value = p.deadline || '';
+    editProjectPriority.value = p.priority || 'medium';
+    editProjectDesc.value = p.description || '';
+    modalProjectTitle.textContent = p.name || 'PROJECT';
+    deleteProjectBtn.classList.remove('hidden');
+    renderTaskList(p.tasks || []);
+  } else {
+    editProjectName.value = '';
+    editProjectDeadline.value = '';
+    editProjectPriority.value = 'medium';
+    editProjectDesc.value = '';
+    modalProjectTitle.textContent = 'NEW PROJECT';
+    deleteProjectBtn.classList.add('hidden');
+    renderTaskList([]);
+  }
+
+  projectModal.classList.remove('hidden');
+}
+
+// Track tasks in-modal separately before saving
+let tempTasks = [];
+
+function renderTaskList(tasks) {
+  tempTasks = JSON.parse(JSON.stringify(tasks));
+  redrawTaskList();
+}
+
+function redrawTaskList() {
+  taskList.innerHTML = tempTasks.map((t, i) => `
+    <div class="task-item">
+      <input type="checkbox" class="task-check" ${t.done ? 'checked' : ''}
+        onchange="toggleTask(${i})" />
+      <div class="task-text-wrap">
+        <div class="task-text ${t.done ? 'done' : ''}">${escHtml(t.text)}</div>
+      </div>
+      <button class="task-remove" onclick="removeTask(${i})" title="Remove">✕</button>
+    </div>
+  `).join('') + `
+    <div class="task-add-row">
+      <input type="text" id="newTaskInput" placeholder="New task..." onkeydown="taskEnter(event)" />
+      <button class="btn-small" onclick="commitTask()">ADD</button>
+    </div>
+  `;
+}
+
+window.toggleTask = function(i) {
+  tempTasks[i].done = !tempTasks[i].done;
+  redrawTaskList();
+};
+
+window.removeTask = function(i) {
+  tempTasks.splice(i, 1);
+  redrawTaskList();
+};
+
+window.taskEnter = function(e) {
+  if (e.key === 'Enter') commitTask();
+};
+
+function commitTask() {
+  const input = document.getElementById('newTaskInput');
+  const txt = input.value.trim();
+  if (!txt) return;
+  tempTasks.push({ id: uid(), text: txt, done: false });
+  redrawTaskList();
+}
+
+addTaskBtn.addEventListener('click', () => {
+  setTimeout(() => { const inp = document.getElementById('newTaskInput'); if(inp) inp.focus(); }, 50);
+});
+
+addProjectBtn.addEventListener('click', () => openProject(null));
+
+closeProjectModal.addEventListener('click', () => {
+  projectModal.classList.add('hidden');
+  currentProjectId = null;
+});
+
+saveProjectBtn.addEventListener('click', () => {
+  const name = editProjectName.value.trim() || 'Untitled';
+  if (currentProjectId) {
+    const idx = projects.findIndex(p => p.id === currentProjectId);
+    if (idx >= 0) {
+      projects[idx] = {
+        ...projects[idx],
+        name,
+        deadline: editProjectDeadline.value,
+        priority: editProjectPriority.value,
+        description: editProjectDesc.value.trim(),
+        tasks: tempTasks,
+      };
+    }
+  } else {
+    projects.push({
+      id: uid(),
+      name,
+      deadline: editProjectDeadline.value,
+      priority: editProjectPriority.value,
+      description: editProjectDesc.value.trim(),
+      tasks: tempTasks,
+      created: Date.now(),
+    });
+  }
+  save();
+  renderProjects();
+  projectModal.classList.add('hidden');
+});
+
+deleteProjectBtn.addEventListener('click', () => {
+  if (!currentProjectId) return;
+  if (!confirm('Delete this project? This cannot be undone.')) return;
+  projects = projects.filter(p => p.id !== currentProjectId);
+  save();
+  renderProjects();
+  projectModal.classList.add('hidden');
+});
+
+window.openProject = openProject;
+
+// ---- MOOD BOARD ----
+const moodGrid = document.getElementById('moodGrid');
+const moodModal = document.getElementById('moodModal');
+const addCardBtn = document.getElementById('addCardBtn');
+const closeMoodModal = document.getElementById('closeMoodModal');
+const saveMoodBtn = document.getElementById('saveMoodBtn');
+const deleteMoodBtn = document.getElementById('deleteMoodBtn');
+
+const moodTitle = document.getElementById('moodTitle');
+const moodText = document.getElementById('moodText');
+const moodImage = document.getElementById('moodImage');
+const moodAudio = document.getElementById('moodAudio');
+const moodTag = document.getElementById('moodTag');
+
+function isSoundCloud(url) {
+  return url && url.includes('soundcloud.com');
+}
+
+function renderMoodBoard() {
+  if (!moodCards.length) {
+    moodGrid.innerHTML = `<div class="empty-state"><strong>MOOD BOARD EMPTY</strong>add references, audio, images &amp; notes</div>`;
+    return;
+  }
+
+  moodGrid.innerHTML = moodCards.map(c => {
+    const imgHtml = c.image
+      ? `<img class="mood-card-img" src="${escAttr(c.image)}" alt="" loading="lazy" onerror="this.style.display='none'" />`
+      : '';
+
+    let audioHtml = '';
+    if (c.audio) {
+      if (isSoundCloud(c.audio)) {
+        const scUrl = encodeURIComponent(c.audio);
+        audioHtml = `<div class="mood-card-audio">
+          <iframe width="100%" height="60" scrolling="no" frameborder="no" allow="autoplay"
+            src="https://w.soundcloud.com/player/?url=${scUrl}&color=%23e8c84a&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false">
+          </iframe>
+        </div>`;
+      } else {
+        audioHtml = `<div class="mood-card-audio">
+          <audio controls preload="none">
+            <source src="${escAttr(c.audio)}" />
+            Audio not supported.
+          </audio>
+        </div>`;
+      }
+    }
+
+    return `
+      <div class="mood-card" onclick="openMoodCard('${c.id}')">
+        ${imgHtml}
+        <div class="mood-card-body">
+          ${c.tag ? `<div class="mood-card-tag">${escHtml(c.tag)}</div>` : ''}
+          <div class="mood-card-title">${escHtml(c.title || 'Untitled')}</div>
+          ${c.text ? `<div class="mood-card-text">${escHtml(c.text)}</div>` : ''}
+          ${audioHtml}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function openMoodCard(id) {
+  const c = id ? moodCards.find(x => x.id === id) : null;
+  currentMoodId = id || null;
+
+  if (c) {
+    moodTitle.value = c.title || '';
+    moodText.value = c.text || '';
+    moodImage.value = c.image || '';
+    moodAudio.value = c.audio || '';
+    moodTag.value = c.tag || '';
+    deleteMoodBtn.classList.remove('hidden');
+  } else {
+    moodTitle.value = '';
+    moodText.value = '';
+    moodImage.value = '';
+    moodAudio.value = '';
+    moodTag.value = '';
+    deleteMoodBtn.classList.add('hidden');
+  }
+
+  moodModal.classList.remove('hidden');
+}
+
+addCardBtn.addEventListener('click', () => openMoodCard(null));
+closeMoodModal.addEventListener('click', () => { moodModal.classList.add('hidden'); currentMoodId = null; });
+
+saveMoodBtn.addEventListener('click', () => {
+  const card = {
+    title: moodTitle.value.trim() || 'Untitled',
+    text: moodText.value.trim(),
+    image: moodImage.value.trim(),
+    audio: moodAudio.value.trim(),
+    tag: moodTag.value.trim(),
+  };
+  if (currentMoodId) {
+    const idx = moodCards.findIndex(c => c.id === currentMoodId);
+    if (idx >= 0) moodCards[idx] = { ...moodCards[idx], ...card };
+  } else {
+    moodCards.push({ id: uid(), ...card, created: Date.now() });
+  }
+  save();
+  renderMoodBoard();
+  moodModal.classList.add('hidden');
+});
+
+deleteMoodBtn.addEventListener('click', () => {
+  if (!currentMoodId) return;
+  if (!confirm('Delete this card?')) return;
+  moodCards = moodCards.filter(c => c.id !== currentMoodId);
+  save();
+  renderMoodBoard();
+  moodModal.classList.add('hidden');
+});
+
+window.openMoodCard = openMoodCard;
+
+// Close modals on backdrop click
+[projectModal, moodModal].forEach(modal => {
+  modal.addEventListener('click', e => {
+    if (e.target === modal) modal.classList.add('hidden');
+  });
+});
+
+// ---- UTILS ----
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/\n/g, '<br>');
+}
+function escAttr(str) {
+  return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ---- INIT ----
+function renderAll() {
+  load();
+  renderProjects();
+  renderMoodBoard();
+}
