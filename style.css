@@ -422,6 +422,20 @@ button {
   border-radius: var(--radius);
 }
 
+.task-item {
+  cursor: grab;
+}
+
+.task-item.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+
+.task-item.drag-over {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
 .task-add-row input:focus { border-color: var(--accent); }
 
 /* ---- MOOD BOARD ---- */
