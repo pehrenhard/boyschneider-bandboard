@@ -37,8 +37,32 @@
     <section id="tab-projects" class="tab-content active">
 
       <div class="toolbar">
-        <button id="addProjectBtn" class="btn-primary">+ NEW PROJECT</button>
-      </div>
+  <button id="addProjectBtn" class="btn-primary">+ NEW PROJECT</button>
+</div>
+
+<div class="filter-bar">
+  <label>SORT</label>
+  <select id="sortProjects">
+    <option value="created">Date Created</option>
+    <option value="deadline">Deadline</option>
+    <option value="priority">Priority</option>
+    <option value="name">Name</option>
+  </select>
+
+  <label>PRIORITY</label>
+  <select id="filterPriority">
+    <option value="all">All</option>
+    <option value="critical">Critical</option>
+    <option value="high">High</option>
+    <option value="medium">Medium</option>
+    <option value="low">Low</option>
+  </select>
+
+  <div class="view-toggle">
+    <button class="view-btn active" id="viewGrid" title="Grid view">⊞</button>
+    <button class="view-btn" id="viewList" title="List view">☰</button>
+  </div>
+</div>
 
       <div id="projectList" class="project-list"></div>
 
