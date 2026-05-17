@@ -1,10 +1,8 @@
 /* =============================================
    BAND BOARD — Script
-   All data stored in localStorage
    ============================================= */
 
 // ---- CONFIG ----
-// Change this to your own code before uploading!
 const ACCESS_CODE = 'BAND2025';
 const JB_BIN_ID  = '6a08e1b9c0954111d833cc82';
 const JB_API_KEY = '$2a$10$mKABUNWen4x.00rTvx0kc.WCGi6RCFrW6Dzv2IS7eug/v4rqeIaAW';
@@ -15,12 +13,45 @@ let projects = [];
 let moodCards = [];
 let currentProjectId = null;
 let currentMoodId = null;
+let currentSort = 'created';
+let currentFilter = 'all';
+let currentView = 'grid';
 
-// ---- STORAGE ----
+// ---- UTILS ----
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/\n/g, '<br>');
+}
+
+function escAttr(str) {
+  return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function deadlineStatus(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr);
+  const diff = Math.ceil((d - today) / 86400000);
+  if (diff < 0) return 'overdue';
+  if (diff <= 7) return 'soon';
+  return 'ok';
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+// ---- STORAGE ----
 async function load() {
   try {
     const res = await fetch(JB_API + '/latest', {
@@ -42,7 +73,7 @@ async function save() {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-Access-Key':  JB_API_KEY,
+        'X-Access-Key': JB_API_KEY,
       },
       body: JSON.stringify({ projects, moodCards }),
     });
@@ -69,7 +100,7 @@ function unlock() {
     gateInput.value = '';
     renderAll();
   } else {
-    gateError.textContent = 'WRONG CODE. TRY AGAIN.';
+    gateError.textContent = 'VERPISS DICH!';
     gateInput.value = '';
     gateInput.focus();
   }
@@ -107,43 +138,19 @@ const saveProjectBtn = document.getElementById('saveProjectBtn');
 const deleteProjectBtn = document.getElementById('deleteProjectBtn');
 const addTaskBtn = document.getElementById('addTaskBtn');
 const taskList = document.getElementById('taskList');
-
-// Fields
 const editProjectName = document.getElementById('editProjectName');
 const editProjectDeadline = document.getElementById('editProjectDeadline');
 const editProjectPriority = document.getElementById('editProjectPriority');
 const editProjectDesc = document.getElementById('editProjectDesc');
 const modalProjectTitle = document.getElementById('modalProjectTitle');
 
-function deadlineStatus(dateStr) {
-  if (!dateStr) return null;
-  const today = new Date(); today.setHours(0,0,0,0);
-  const d = new Date(dateStr);
-  const diff = Math.ceil((d - today) / 86400000);
-  if (diff < 0) return 'overdue';
-  if (diff <= 7) return 'soon';
-  return 'ok';
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-}
-
-let currentSort = 'created';
-let currentFilter = 'all';
-let currentView = 'grid';
-
 function renderProjects() {
   let list = [...projects];
 
-  // filter
   if (currentFilter !== 'all') {
     list = list.filter(p => p.priority === currentFilter);
   }
 
-  // sort
   const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
   list.sort((a, b) => {
     if (currentSort === 'priority') return priorityOrder[a.priority] - priorityOrder[b.priority];
@@ -153,10 +160,9 @@ function renderProjects() {
       return new Date(a.deadline) - new Date(b.deadline);
     }
     if (currentSort === 'name') return (a.name || '').localeCompare(b.name || '');
-    return (b.created || 0) - (a.created || 0); // default: newest first
+    return (b.created || 0) - (a.created || 0);
   });
 
-  // view class
   projectList.classList.toggle('list-view', currentView === 'list');
 
   if (!list.length) {
@@ -164,32 +170,7 @@ function renderProjects() {
     return;
   }
 
-// wire up filter/sort/view controls — add this after the renderProjects function
-document.getElementById('sortProjects').addEventListener('change', e => {
-  currentSort = e.target.value;
-  renderProjects();
-});
-
-document.getElementById('filterPriority').addEventListener('change', e => {
-  currentFilter = e.target.value;
-  renderProjects();
-});
-
-document.getElementById('viewGrid').addEventListener('click', () => {
-  currentView = 'grid';
-  document.getElementById('viewGrid').classList.add('active');
-  document.getElementById('viewList').classList.remove('active');
-  renderProjects();
-});
-
-document.getElementById('viewList').addEventListener('click', () => {
-  currentView = 'list';
-  document.getElementById('viewList').classList.add('active');
-  document.getElementById('viewGrid').classList.remove('active');
-  renderProjects();
-});
-
-  projectList.innerHTML = projects.map(p => {
+  projectList.innerHTML = list.map(p => {
     const done = (p.tasks || []).filter(t => t.done).length;
     const total = (p.tasks || []).length;
     const ds = deadlineStatus(p.deadline);
@@ -216,6 +197,30 @@ document.getElementById('viewList').addEventListener('click', () => {
   }).join('');
 }
 
+document.getElementById('sortProjects').addEventListener('change', e => {
+  currentSort = e.target.value;
+  renderProjects();
+});
+
+document.getElementById('filterPriority').addEventListener('change', e => {
+  currentFilter = e.target.value;
+  renderProjects();
+});
+
+document.getElementById('viewGrid').addEventListener('click', () => {
+  currentView = 'grid';
+  document.getElementById('viewGrid').classList.add('active');
+  document.getElementById('viewList').classList.remove('active');
+  renderProjects();
+});
+
+document.getElementById('viewList').addEventListener('click', () => {
+  currentView = 'list';
+  document.getElementById('viewList').classList.add('active');
+  document.getElementById('viewGrid').classList.remove('active');
+  renderProjects();
+});
+
 function openProject(id) {
   const p = id ? projects.find(x => x.id === id) : null;
   currentProjectId = id || null;
@@ -241,7 +246,7 @@ function openProject(id) {
   projectModal.classList.remove('hidden');
 }
 
-// Track tasks in-modal separately before saving
+// ---- TASKS ----
 let tempTasks = [];
 
 function renderTaskList(tasks) {
@@ -266,7 +271,6 @@ function redrawTaskList() {
     </div>
   `;
 
-  // Drag-and-drop logic
   let dragSrcIndex = null;
 
   taskList.querySelectorAll('.task-item').forEach(item => {
@@ -328,7 +332,7 @@ closeProjectModal.addEventListener('click', () => {
   currentProjectId = null;
 });
 
-saveProjectBtn.addEventListener('click', () => {
+saveProjectBtn.addEventListener('click', async () => {
   const name = editProjectName.value.trim() || 'Untitled';
   if (currentProjectId) {
     const idx = projects.findIndex(p => p.id === currentProjectId);
@@ -353,16 +357,16 @@ saveProjectBtn.addEventListener('click', () => {
       created: Date.now(),
     });
   }
-  save();
+  await save();
   renderProjects();
   projectModal.classList.add('hidden');
 });
 
-deleteProjectBtn.addEventListener('click', () => {
+deleteProjectBtn.addEventListener('click', async () => {
   if (!currentProjectId) return;
   if (!confirm('Delete this project? This cannot be undone.')) return;
   projects = projects.filter(p => p.id !== currentProjectId);
-  save();
+  await save();
   renderProjects();
   projectModal.classList.add('hidden');
 });
@@ -376,7 +380,6 @@ const addCardBtn = document.getElementById('addCardBtn');
 const closeMoodModal = document.getElementById('closeMoodModal');
 const saveMoodBtn = document.getElementById('saveMoodBtn');
 const deleteMoodBtn = document.getElementById('deleteMoodBtn');
-
 const moodTitle = document.getElementById('moodTitle');
 const moodText = document.getElementById('moodText');
 const moodImage = document.getElementById('moodImage');
@@ -456,7 +459,7 @@ function openMoodCard(id) {
 addCardBtn.addEventListener('click', () => openMoodCard(null));
 closeMoodModal.addEventListener('click', () => { moodModal.classList.add('hidden'); currentMoodId = null; });
 
-saveMoodBtn.addEventListener('click', () => {
+saveMoodBtn.addEventListener('click', async () => {
   const card = {
     title: moodTitle.value.trim() || 'Untitled',
     text: moodText.value.trim(),
@@ -470,41 +473,27 @@ saveMoodBtn.addEventListener('click', () => {
   } else {
     moodCards.push({ id: uid(), ...card, created: Date.now() });
   }
-  save();
+  await save();
   renderMoodBoard();
   moodModal.classList.add('hidden');
 });
 
-deleteMoodBtn.addEventListener('click', () => {
+deleteMoodBtn.addEventListener('click', async () => {
   if (!currentMoodId) return;
   if (!confirm('Delete this card?')) return;
   moodCards = moodCards.filter(c => c.id !== currentMoodId);
-  save();
+  await save();
   renderMoodBoard();
   moodModal.classList.add('hidden');
 });
 
 window.openMoodCard = openMoodCard;
 
-// Close modals on backdrop click
 [projectModal, moodModal].forEach(modal => {
   modal.addEventListener('click', e => {
     if (e.target === modal) modal.classList.add('hidden');
   });
 });
-
-// ---- UTILS ----
-function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/\n/g, '<br>');
-}
-function escAttr(str) {
-  return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
 
 // ---- INIT ----
 async function renderAll() {
