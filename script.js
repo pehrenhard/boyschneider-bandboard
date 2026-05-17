@@ -196,9 +196,6 @@ function renderProjects() {
       </div>`;
   }).join('');
 
-   // add data-index to project cards for touch drag
-  projectList.querySelectorAll('.project-card').forEach((el, i) => el.dataset.index = i);
-  initProjectTouchDrag();
 }
 
 document.getElementById('sortProjects').addEventListener('change', e => {
