@@ -164,33 +164,6 @@ function renderProjects() {
     return;
   }
 
-  projectList.innerHTML = list.map(p => {
-    const done = (p.tasks || []).filter(t => t.done).length;
-    const total = (p.tasks || []).length;
-    const ds = deadlineStatus(p.deadline);
-    const dlClass = ds === 'overdue' ? 'overdue' : ds === 'soon' ? 'soon' : '';
-    const dlLabel = p.deadline
-      ? (ds === 'overdue' ? '⚠ ' : ds === 'soon' ? '→ ' : '') + formatDate(p.deadline)
-      : '';
-
-    return `
-      <div class="project-card" data-id="${p.id}" data-priority="${p.priority}" onclick="openProject('${p.id}')">
-        <div class="project-card-header">
-          <div class="project-card-name">${escHtml(p.name || 'Untitled')}</div>
-          <span class="priority-badge badge-${p.priority}">${p.priority.toUpperCase()}</span>
-        </div>
-        ${p.description ? `<div class="project-card-desc">${escHtml(p.description)}</div>` : ''}
-        <div class="project-card-meta">
-          <div class="task-count">
-            <span class="task-done">${done} done</span>
-            <span>/ ${total} tasks</span>
-          </div>
-          ${dlLabel ? `<div class="deadline ${dlClass}">${dlLabel}</div>` : ''}
-        </div>
-      </div>`;
-  }).join('');
-}
-
 // wire up filter/sort/view controls — add this after the renderProjects function
 document.getElementById('sortProjects').addEventListener('change', e => {
   currentSort = e.target.value;
