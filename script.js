@@ -301,6 +301,7 @@ function redrawTaskList() {
       redrawTaskList();
     });
   });
+   initTaskTouchDrag();
 }
 
 window.toggleTask = function(i) {
