@@ -762,3 +762,43 @@ textarea {
   align-items: flex-end;
   gap: 4px;
 }
+
+/* ---- TOUCH DRAG ---- */
+.task-item.touch-dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+.task-item.touch-drag-over {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.project-card.touch-dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+.project-card.touch-drag-over {
+  border-color: var(--accent);
+}
+
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.85;
+  transform: scale(1.03);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  background: var(--surface2);
+  border: 1px solid var(--accent);
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text);
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-radius: var(--radius);
+}
