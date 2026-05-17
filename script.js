@@ -53,7 +53,7 @@ function formatDate(dateStr) {
 
 function personChipHtml(person) {
   const map = { BO: 'chip-bo-display', MK: 'chip-mk-display', MG: 'chip-mg-display' };
-  return `<span class="person-chip-display ${map[person]}">${person}</span>`;
+  return `<span class="${map[person]}" style="font-size:9px;font-weight:700;letter-spacing:0.08em;padding:2px 6px;border-radius:2px;">${person}</span>`;
 }
 
 function authorClass(userId) {
