@@ -237,6 +237,18 @@ button {
 }
 .task-add-row input:focus { border-color: var(--accent); }
 
+.task-edit-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--accent);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 12px;
+  width: 100%;
+  outline: none;
+  padding: 2px 0;
+}
+
 /* ---- MOOD BOARD ---- */
 .mood-grid {
   padding: 16px 20px; display: grid; gap: 14px; grid-template-columns: 1fr;
