@@ -495,6 +495,113 @@ window.openMoodCard = openMoodCard;
   });
 });
 
+// ---- TOUCH DRAG & DROP ----
+function addTouchDrag(getItems, getDataIndex, onReorder) {
+  let ghost = null;
+  let srcIndex = null;
+  let overIndex = null;
+
+  function createGhost(text, x, y) {
+    ghost = document.createElement('div');
+    ghost.className = 'drag-ghost';
+    ghost.textContent = text;
+    ghost.style.left = x + 'px';
+    ghost.style.top  = y + 'px';
+    document.body.appendChild(ghost);
+  }
+
+  function moveGhost(x, y) {
+    if (!ghost) return;
+    ghost.style.left = (x + 12) + 'px';
+    ghost.style.top  = (y - 20) + 'px';
+  }
+
+  function removeGhost() {
+    if (ghost) { ghost.remove(); ghost = null; }
+  }
+
+  function itemUnder(x, y) {
+    ghost && (ghost.style.display = 'none');
+    const el = document.elementFromPoint(x, y);
+    ghost && (ghost.style.display = '');
+    if (!el) return null;
+    return el.closest('[data-index]');
+  }
+
+  document.addEventListener('touchstart', e => {
+    const item = e.target.closest('[data-index]');
+    if (!item || !getItems().includes(item)) return;
+    // don't hijack checkbox/button taps
+    if (e.target.closest('input, button')) return;
+
+    srcIndex = parseInt(item.dataset.index);
+    const touch = e.touches[0];
+    const label = item.querySelector('.task-text, .project-card-name');
+    createGhost(label ? label.textContent.trim() : '…', touch.clientX, touch.clientY);
+    item.classList.add('touch-dragging');
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (srcIndex === null) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    moveGhost(touch.clientX, touch.clientY);
+
+    // clear previous over highlight
+    getItems().forEach(el => el.classList.remove('touch-drag-over'));
+
+    const target = itemUnder(touch.clientX, touch.clientY);
+    if (target && getItems().includes(target)) {
+      overIndex = parseInt(target.dataset.index);
+      if (overIndex !== srcIndex) target.classList.add('touch-drag-over');
+    } else {
+      overIndex = null;
+    }
+  }, { passive: false });
+
+  document.addEventListener('touchend', () => {
+    if (srcIndex === null) return;
+    removeGhost();
+    getItems().forEach(el => {
+      el.classList.remove('touch-dragging', 'touch-drag-over');
+    });
+    if (overIndex !== null && overIndex !== srcIndex) {
+      onReorder(srcIndex, overIndex);
+    }
+    srcIndex = null;
+    overIndex = null;
+  });
+}
+
+// Wire up touch drag for TASKS (called after redrawTaskList)
+function initTaskTouchDrag() {
+  addTouchDrag(
+    () => Array.from(taskList.querySelectorAll('.task-item')),
+    el => parseInt(el.dataset.index),
+    (from, to) => {
+      const moved = tempTasks.splice(from, 1)[0];
+      tempTasks.splice(to, 0, moved);
+      redrawTaskList();
+      initTaskTouchDrag();
+    }
+  );
+}
+
+// Wire up touch drag for PROJECT CARDS
+function initProjectTouchDrag() {
+  addTouchDrag(
+    () => Array.from(projectList.querySelectorAll('.project-card')),
+    el => parseInt(el.dataset.index),
+    (from, to) => {
+      const moved = projects.splice(from, 1)[0];
+      projects.splice(to, 0, moved);
+      save();
+      renderProjects();
+      initProjectTouchDrag();
+    }
+  );
+}
+
 // ---- INIT ----
 async function renderAll() {
   await load();
