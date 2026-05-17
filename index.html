@@ -10,7 +10,7 @@
 </head>
 <body>
 
-  <!-- GATE SCREEN -->
+  <!-- GATE -->
   <div id="gate" class="gate">
     <div class="gate-inner">
       <div class="gate-title">BAND BOARD</div>
@@ -21,59 +21,120 @@
     </div>
   </div>
 
-  <!-- MAIN APP -->
+  <!-- APP -->
   <div id="app" class="app hidden">
 
     <header class="header">
-      <div class="header-title">BAND BOARD</div>
+      <div class="header-left">
+        <div class="header-title">BAND BOARD</div>
+        <div id="userChip" class="user-chip"></div>
+      </div>
       <nav class="tabs">
         <button class="tab active" data-tab="projects">PROJECTS</button>
         <button class="tab" data-tab="moodboard">MOOD BOARD</button>
+        <button class="tab" data-tab="notes">NOTES</button>
+        <button class="tab" data-tab="archive">ARCHIVE</button>
       </nav>
-      <button class="lock-btn" id="lockBtn" title="Lock">&#x23;</button>
+      <div class="header-actions">
+        <button class="icon-btn" id="reloadBtn" title="Hard reload">↻</button>
+        <button class="icon-btn" id="lockBtn" title="Lock">⏻</button>
+      </div>
     </header>
 
     <!-- PROJECTS TAB -->
     <section id="tab-projects" class="tab-content active">
-
       <div class="toolbar">
-  <button id="addProjectBtn" class="btn-primary">+ NEW PROJECT</button>
-</div>
-
-<div class="filter-bar">
-  <label>SORT</label>
-  <select id="sortProjects">
-    <option value="created">Date Created</option>
-    <option value="deadline">Deadline</option>
-    <option value="priority">Priority</option>
-    <option value="name">Name</option>
-  </select>
-
-  <label>PRIORITY</label>
-  <select id="filterPriority">
-    <option value="all">All</option>
-    <option value="critical">Critical</option>
-    <option value="high">High</option>
-    <option value="medium">Medium</option>
-    <option value="low">Low</option>
-  </select>
-
-  <div class="view-toggle">
-    <button class="view-btn active" id="viewGrid" title="Grid view">⊞</button>
-    <button class="view-btn" id="viewList" title="List view">☰</button>
-  </div>
-</div>
-
+        <button id="addProjectBtn" class="btn-primary">+ NEW PROJECT</button>
+      </div>
+      <div class="filter-bar">
+        <label>SORT</label>
+        <select id="sortProjects">
+          <option value="created">Date Created</option>
+          <option value="deadline">Deadline</option>
+          <option value="priority">Priority</option>
+          <option value="name">Name</option>
+        </select>
+        <label>PRIORITY</label>
+        <select id="filterPriority">
+          <option value="all">All</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <div class="view-toggle">
+          <button class="view-btn active" id="viewGrid" title="Grid view">⊞</button>
+          <button class="view-btn" id="viewList" title="List view">☰</button>
+        </div>
+      </div>
       <div id="projectList" class="project-list"></div>
+    </section>
 
-      <!-- PROJECT MODAL -->
-      <div id="projectModal" class="modal hidden">
-        <div class="modal-box">
-          <div class="modal-header">
-            <span id="modalProjectTitle" class="modal-title">PROJECT</span>
-            <button class="modal-close" id="closeProjectModal">✕</button>
+    <!-- MOOD BOARD TAB -->
+    <section id="tab-moodboard" class="tab-content hidden">
+      <div class="toolbar">
+        <button id="addCardBtn" class="btn-primary">+ ADD CARD</button>
+      </div>
+      <div id="moodGrid" class="mood-grid"></div>
+    </section>
+
+    <!-- NOTES TAB -->
+    <section id="tab-notes" class="tab-content hidden">
+      <div class="toolbar">
+        <button id="addNoteBtn" class="btn-primary">+ NEW NOTE</button>
+      </div>
+      <div id="noteGrid" class="mood-grid"></div>
+    </section>
+
+    <!-- ARCHIVE TAB -->
+    <section id="tab-archive" class="tab-content hidden">
+      <div class="archive-header">
+        <div class="archive-section-title">ARCHIVED PROJECTS</div>
+      </div>
+      <div id="archiveProjectList" class="project-list"></div>
+      <div class="archive-header" style="margin-top:16px;">
+        <div class="archive-section-title">ARCHIVED MOOD CARDS</div>
+      </div>
+      <div id="archiveMoodList" class="mood-grid"></div>
+    </section>
+
+    <!-- PROJECT MODAL -->
+    <div id="projectModal" class="modal hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span id="modalProjectTitle" class="modal-title">PROJECT</span>
+          <button class="modal-close" id="closeProjectModal">✕</button>
+        </div>
+        <div class="modal-body">
+
+          <!-- VIEW MODE -->
+          <div id="projectViewMode">
+            <div class="view-field">
+              <div class="view-label">PROJECT</div>
+              <div id="viewProjectName" class="view-value view-name"></div>
+            </div>
+            <div class="view-row">
+              <div class="view-field">
+                <div class="view-label">DEADLINE</div>
+                <div id="viewProjectDeadline" class="view-value"></div>
+              </div>
+              <div class="view-field">
+                <div class="view-label">PRIORITY</div>
+                <div id="viewProjectPriority" class="view-value"></div>
+              </div>
+            </div>
+            <div class="view-field">
+              <div class="view-label">DESCRIPTION</div>
+              <div id="viewProjectDesc" class="view-value"></div>
+            </div>
+            <div class="view-field">
+              <div class="view-label">PEOPLE</div>
+              <div id="viewProjectPeople" class="view-value"></div>
+            </div>
           </div>
-          <div class="modal-body">
+
+          <!-- EDIT MODE -->
+          <div id="projectEditMode" class="hidden">
             <div class="field-group">
               <label>Project Name</label>
               <input type="text" id="editProjectName" placeholder="e.g. New EP Recording" />
@@ -97,72 +158,110 @@
               <label>Description</label>
               <textarea id="editProjectDesc" placeholder="What's this project about?" rows="2"></textarea>
             </div>
-
-            <div class="tasks-section">
-              <div class="tasks-header">
-                <span>TASKS</span>
-                <button id="addTaskBtn" class="btn-small">+ ADD</button>
+            <div class="field-group">
+              <label>People</label>
+              <div class="people-select" id="editProjectPeople">
+                <button type="button" class="person-chip chip-bo" data-person="BO">BO</button>
+                <button type="button" class="person-chip chip-mk" data-person="MK">MK</button>
+                <button type="button" class="person-chip chip-mg" data-person="MG">MG</button>
               </div>
-              <div id="taskList" class="task-list"></div>
             </div>
           </div>
-          <div class="modal-footer">
-            <button id="deleteProjectBtn" class="btn-danger">DELETE PROJECT</button>
+
+          <!-- TASKS (always editable) -->
+          <div class="tasks-section">
+            <div class="tasks-header">
+              <span>TASKS</span>
+              <button id="addTaskBtn" class="btn-small">+ ADD</button>
+            </div>
+            <div id="taskList" class="task-list"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            <button id="archiveProjectBtn" class="btn-muted">ARCHIVE</button>
+          </div>
+          <div class="modal-footer-right">
+            <button id="editProjectBtn" class="btn-outline hidden">EDIT</button>
             <button id="saveProjectBtn" class="btn-primary">SAVE</button>
           </div>
         </div>
       </div>
+    </div>
 
-    </section>
-
-    <!-- MOOD BOARD TAB -->
-    <section id="tab-moodboard" class="tab-content hidden">
-
-      <div class="toolbar">
-        <button id="addCardBtn" class="btn-primary">+ ADD CARD</button>
-      </div>
-
-      <div id="moodGrid" class="mood-grid"></div>
-
-      <!-- MOOD CARD MODAL -->
-      <div id="moodModal" class="modal hidden">
-        <div class="modal-box">
-          <div class="modal-header">
-            <span class="modal-title">MOOD CARD</span>
-            <button class="modal-close" id="closeMoodModal">✕</button>
+    <!-- MOOD MODAL -->
+    <div id="moodModal" class="modal hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span class="modal-title">MOOD CARD</span>
+          <button class="modal-close" id="closeMoodModal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="field-group">
+            <label>Title</label>
+            <input type="text" id="moodTitle" placeholder="e.g. Album Artwork Ref" />
           </div>
-          <div class="modal-body">
-            <div class="field-group">
-              <label>Title</label>
-              <input type="text" id="moodTitle" placeholder="e.g. Album Artwork Ref" />
-            </div>
-            <div class="field-group">
-              <label>Text / Notes</label>
-              <textarea id="moodText" placeholder="Write anything..." rows="3"></textarea>
-            </div>
-            <div class="field-group">
-              <label>Image URL</label>
-              <input type="url" id="moodImage" placeholder="https://..." />
-              <span class="field-hint">Paste a direct image link — it'll show as a preview</span>
-            </div>
-            <div class="field-group">
-              <label>Audio URL</label>
-              <input type="url" id="moodAudio" placeholder="https://... (.mp3, .ogg, .wav, or SoundCloud)" />
-              <span class="field-hint">Direct audio file or SoundCloud embed link</span>
-            </div>
-            <div class="field-group">
-              <label>Tag / Category</label>
-              <input type="text" id="moodTag" placeholder="e.g. artwork, sound ref, lyrics..." />
-            </div>
+          <div class="field-group">
+            <label>Text / Notes</label>
+            <textarea id="moodText" placeholder="Write anything..." rows="3"></textarea>
           </div>
-          <div class="modal-footer">
-            <button id="deleteMoodBtn" class="btn-danger hidden">DELETE CARD</button>
+          <div class="field-group">
+            <label>Image URL</label>
+            <input type="url" id="moodImage" placeholder="https://..." />
+            <span class="field-hint">Paste a direct image link</span>
+          </div>
+          <div class="field-group">
+            <label>Audio URL</label>
+            <input type="url" id="moodAudio" placeholder="https://... (.mp3, .ogg, .wav, or SoundCloud)" />
+            <span class="field-hint">Direct audio file or SoundCloud embed link</span>
+          </div>
+          <div class="field-group">
+            <label>Tag / Category</label>
+            <input type="text" id="moodTag" placeholder="e.g. artwork, sound ref, lyrics..." />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            <button id="archiveMoodBtn" class="btn-muted hidden">ARCHIVE</button>
+          </div>
+          <div class="modal-footer-right">
             <button id="saveMoodBtn" class="btn-primary">SAVE CARD</button>
           </div>
         </div>
       </div>
+    </div>
 
-    </section>
+    <!-- NOTE MODAL -->
+    <div id="noteModal" class="modal hidden">
+      <div class="modal-box">
+        <div class="modal-header">
+          <span class="modal-title">NOTE</span>
+          <button class="modal-close" id="closeNoteModal">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="field-group">
+            <label>Title</label>
+            <input type="text" id="noteTitle" placeholder="e.g. Verse ideas, Meeting notes..." />
+          </div>
+          <div class="field-group">
+            <label>Tag</label>
+            <input type="text" id="noteTag" placeholder="e.g. lyrics, admin, ideas..." />
+          </div>
+          <div class="field-group">
+            <label>Content</label>
+            <textarea id="noteContent" placeholder="Write freely..." rows="10"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            <button id="deleteNoteBtn" class="btn-danger hidden">DELETE</button>
+          </div>
+          <div class="modal-footer-right">
+            <button id="saveNoteBtn" class="btn-primary">SAVE NOTE</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
   </div>
 
