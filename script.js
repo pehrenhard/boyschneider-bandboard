@@ -287,6 +287,7 @@ editProjectBtn.addEventListener('click', () => {
 });
 
 closeProjectModal.addEventListener('click', () => { projectModal.classList.add('hidden'); currentProjectId=null; });
+addProjectBtn.addEventListener('click', () => openProject(null));
 
 saveProjectBtn.addEventListener('click', async () => {
   const name = editProjectName.value.trim() || 'Untitled';
