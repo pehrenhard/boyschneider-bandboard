@@ -324,6 +324,31 @@ let tempTasks = [];
 
 function renderTaskList(tasks) { tempTasks = JSON.parse(JSON.stringify(tasks)); redrawTaskList(); }
 
+window.editTask = function(i) {
+  const textEl = taskListEl.querySelectorAll('.task-text')[i];
+  if (!textEl) return;
+  const original = tempTasks[i].text;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'task-edit-input';
+  input.value = original;
+  textEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  function commit() {
+    const val = input.value.trim();
+    if (val) tempTasks[i].text = val;
+    redrawTaskList();
+  }
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { redrawTaskList(); } // cancel
+  });
+};
+
 function redrawTaskList() {
   taskListEl.innerHTML = tempTasks.map((t,i) => {
     const authorLabel = t.author && t.author !== 'neutral' ? t.author : '';
@@ -332,7 +357,7 @@ function redrawTaskList() {
     <div class="task-item" draggable="true" data-index="${i}">
       <input type="checkbox" class="task-check" ${t.done?'checked':''} onchange="toggleTask(${i})" />
       <div class="task-text-wrap">
-        <div class="task-text ${t.done?'done':''}">${escHtml(t.text)}</div>
+        <div class="task-text ${t.done?'done':''}" ondblclick="editTask(${i})">${escHtml(t.text)}</div>
       </div>
       ${authorLabel ? `<span class="task-author ${aClass}">${authorLabel}</span>` : ''}
       <button class="task-remove" onclick="removeTask(${i})" title="Remove">✕</button>
