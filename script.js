@@ -131,11 +131,90 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 }
 
+let currentSort = 'created';
+let currentFilter = 'all';
+let currentView = 'grid';
+
 function renderProjects() {
-  if (!projects.length) {
-    projectList.innerHTML = `<div class="empty-state"><strong>NO PROJECTS YET</strong>hit + NEW PROJECT to get started</div>`;
+  let list = [...projects];
+
+  // filter
+  if (currentFilter !== 'all') {
+    list = list.filter(p => p.priority === currentFilter);
+  }
+
+  // sort
+  const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+  list.sort((a, b) => {
+    if (currentSort === 'priority') return priorityOrder[a.priority] - priorityOrder[b.priority];
+    if (currentSort === 'deadline') {
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
+    }
+    if (currentSort === 'name') return (a.name || '').localeCompare(b.name || '');
+    return (b.created || 0) - (a.created || 0); // default: newest first
+  });
+
+  // view class
+  projectList.classList.toggle('list-view', currentView === 'list');
+
+  if (!list.length) {
+    projectList.innerHTML = `<div class="empty-state"><strong>${currentFilter !== 'all' ? 'NO MATCHES' : 'NO PROJECTS YET'}</strong>${currentFilter !== 'all' ? 'try a different filter' : 'hit + NEW PROJECT to get started'}</div>`;
     return;
   }
+
+  projectList.innerHTML = list.map(p => {
+    const done = (p.tasks || []).filter(t => t.done).length;
+    const total = (p.tasks || []).length;
+    const ds = deadlineStatus(p.deadline);
+    const dlClass = ds === 'overdue' ? 'overdue' : ds === 'soon' ? 'soon' : '';
+    const dlLabel = p.deadline
+      ? (ds === 'overdue' ? '⚠ ' : ds === 'soon' ? '→ ' : '') + formatDate(p.deadline)
+      : '';
+
+    return `
+      <div class="project-card" data-id="${p.id}" data-priority="${p.priority}" onclick="openProject('${p.id}')">
+        <div class="project-card-header">
+          <div class="project-card-name">${escHtml(p.name || 'Untitled')}</div>
+          <span class="priority-badge badge-${p.priority}">${p.priority.toUpperCase()}</span>
+        </div>
+        ${p.description ? `<div class="project-card-desc">${escHtml(p.description)}</div>` : ''}
+        <div class="project-card-meta">
+          <div class="task-count">
+            <span class="task-done">${done} done</span>
+            <span>/ ${total} tasks</span>
+          </div>
+          ${dlLabel ? `<div class="deadline ${dlClass}">${dlLabel}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// wire up filter/sort/view controls — add this after the renderProjects function
+document.getElementById('sortProjects').addEventListener('change', e => {
+  currentSort = e.target.value;
+  renderProjects();
+});
+
+document.getElementById('filterPriority').addEventListener('change', e => {
+  currentFilter = e.target.value;
+  renderProjects();
+});
+
+document.getElementById('viewGrid').addEventListener('click', () => {
+  currentView = 'grid';
+  document.getElementById('viewGrid').classList.add('active');
+  document.getElementById('viewList').classList.remove('active');
+  renderProjects();
+});
+
+document.getElementById('viewList').addEventListener('click', () => {
+  currentView = 'list';
+  document.getElementById('viewList').classList.add('active');
+  document.getElementById('viewGrid').classList.remove('active');
+  renderProjects();
+});
 
   projectList.innerHTML = projects.map(p => {
     const done = (p.tasks || []).filter(t => t.done).length;
