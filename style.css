@@ -327,6 +327,33 @@ button {
 .modal-footer-left { display: flex; gap: 8px; }
 .modal-footer-right { display: flex; gap: 8px; }
 
+/* ---- COLOUR LABELS ---- */
+.colour-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.colour-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform var(--transition), border-color var(--transition);
+  flex-shrink: 0;
+}
+
+.colour-dot:hover { transform: scale(1.2); }
+.colour-dot.selected { border-color: #fff; transform: scale(1.15); }
+.colour-dot.none { background: var(--surface2); border-color: var(--border2); }
+.colour-dot.none.selected { border-color: var(--text-dim); }
+
+/* card colour strip — overrides priority strip */
+.project-card.has-colour::before { background: var(--card-colour) !important; }
+.note-card.has-colour { border-left: 3px solid var(--card-colour); }
+
 /* ---- FORM FIELDS ---- */
 .field-group { display: flex; flex-direction: column; gap: 5px; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
