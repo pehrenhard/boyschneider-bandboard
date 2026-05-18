@@ -22,7 +22,7 @@ let archive    = { projects: [], moodCards: [] };
 let currentProjectId = null;
 let currentMoodId    = null;
 let currentNoteId    = null;
-let currentUser      = null; // { id, label, chipClass }
+let currentUser      = null;
 let projectIsNew     = false;
 let currentSort   = 'created';
 let currentFilter = 'all';
@@ -110,7 +110,6 @@ function unlock() {
     app.classList.remove('hidden');
     gateError.textContent = '';
     gateInput.value = '';
-    // show user chip
     if (user.label) {
       userChip.textContent = user.label;
       userChip.className = `user-chip ${user.chipClass}`;
@@ -147,26 +146,53 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
+// ---- COLOUR PICKER ----
+function initColourPicker(pickerId) {
+  const picker = document.getElementById(pickerId);
+  if (!picker) return;
+  picker.querySelectorAll('.colour-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      picker.querySelectorAll('.colour-dot').forEach(d => d.classList.remove('selected'));
+      dot.classList.add('selected');
+    });
+  });
+}
+
+function getSelectedColour(pickerId) {
+  const picker = document.getElementById(pickerId);
+  if (!picker) return '';
+  const sel = picker.querySelector('.colour-dot.selected');
+  return sel ? sel.dataset.colour : '';
+}
+
+function setSelectedColour(pickerId, colour) {
+  const picker = document.getElementById(pickerId);
+  if (!picker) return;
+  picker.querySelectorAll('.colour-dot').forEach(d => {
+    d.classList.toggle('selected', d.dataset.colour === (colour || ''));
+  });
+}
+
 // ---- PROJECTS ----
-const projectList      = document.getElementById('projectList');
-const projectModal     = document.getElementById('projectModal');
-const modalProjectTitle= document.getElementById('modalProjectTitle');
-const addProjectBtn    = document.getElementById('addProjectBtn');
-const closeProjectModal= document.getElementById('closeProjectModal');
-const saveProjectBtn   = document.getElementById('saveProjectBtn');
-const editProjectBtn   = document.getElementById('editProjectBtn');
-const archiveProjectBtn= document.getElementById('archiveProjectBtn');
-const addTaskBtn       = document.getElementById('addTaskBtn');
-const taskListEl       = document.getElementById('taskList');
+const projectList       = document.getElementById('projectList');
+const projectModal      = document.getElementById('projectModal');
+const modalProjectTitle = document.getElementById('modalProjectTitle');
+const addProjectBtn     = document.getElementById('addProjectBtn');
+const closeProjectModal = document.getElementById('closeProjectModal');
+const saveProjectBtn    = document.getElementById('saveProjectBtn');
+const editProjectBtn    = document.getElementById('editProjectBtn');
+const archiveProjectBtn = document.getElementById('archiveProjectBtn');
+const addTaskBtn        = document.getElementById('addTaskBtn');
+const taskListEl        = document.getElementById('taskList');
 
-const editProjectName    = document.getElementById('editProjectName');
-const editProjectDeadline= document.getElementById('editProjectDeadline');
-const editProjectPriority= document.getElementById('editProjectPriority');
-const editProjectDesc    = document.getElementById('editProjectDesc');
-const editProjectPeopleEl= document.getElementById('editProjectPeople');
+const editProjectName     = document.getElementById('editProjectName');
+const editProjectDeadline = document.getElementById('editProjectDeadline');
+const editProjectPriority = document.getElementById('editProjectPriority');
+const editProjectDesc     = document.getElementById('editProjectDesc');
+const editProjectPeopleEl = document.getElementById('editProjectPeople');
 
-const projectViewMode = document.getElementById('projectViewMode');
-const projectEditMode = document.getElementById('projectEditMode');
+const projectViewMode     = document.getElementById('projectViewMode');
+const projectEditMode     = document.getElementById('projectEditMode');
 const viewProjectName     = document.getElementById('viewProjectName');
 const viewProjectDeadline = document.getElementById('viewProjectDeadline');
 const viewProjectPriority = document.getElementById('viewProjectPriority');
@@ -177,6 +203,10 @@ const viewProjectPeople   = document.getElementById('viewProjectPeople');
 editProjectPeopleEl.querySelectorAll('.person-chip').forEach(btn => {
   btn.addEventListener('click', () => btn.classList.toggle('selected'));
 });
+
+// Init colour pickers
+initColourPicker('editProjectColour');
+initColourPicker('editNoteColour');
 
 function getSelectedPeople() {
   return Array.from(editProjectPeopleEl.querySelectorAll('.person-chip.selected')).map(b => b.dataset.person);
@@ -198,7 +228,7 @@ function showProjectViewMode(p) {
   viewProjectDeadline.textContent = p.deadline ? formatDate(p.deadline) + (ds === 'overdue' ? ' ⚠' : ds === 'soon' ? ' →' : '') : '—';
   viewProjectPriority.innerHTML = `<span class="priority-badge badge-${p.priority}">${(p.priority||'medium').toUpperCase()}</span>`;
   viewProjectDesc.textContent = p.description || '—';
-  viewProjectPeople.innerHTML = (p.people || []).length ? (p.people).map(personChipHtml).join(' ') : '—';
+  viewProjectPeople.innerHTML = (p.people || []).length ? p.people.map(personChipHtml).join(' ') : '—';
 }
 
 function showProjectEditMode() {
@@ -230,8 +260,10 @@ function renderProjects() {
     const dlClass = ds==='overdue'?'overdue':ds==='soon'?'soon':'';
     const dlLabel = p.deadline ? (ds==='overdue'?'⚠ ':ds==='soon'?'→ ':'')+formatDate(p.deadline) : '';
     const peopleHtml = (p.people||[]).length ? `<div class="project-card-people">${p.people.map(personChipHtml).join('')}</div>` : '';
+    const colourStyle = p.colour ? `style="--card-colour:${p.colour}"` : '';
+    const colourClass = p.colour ? 'has-colour' : '';
     return `
-      <div class="project-card" data-id="${p.id}" data-priority="${p.priority}" onclick="openProject('${p.id}')">
+      <div class="project-card ${colourClass}" ${colourStyle} data-id="${p.id}" data-priority="${p.priority}" onclick="openProject('${p.id}')">
         <div class="project-card-header">
           <div class="project-card-name">${escHtml(p.name||'Untitled')}</div>
           <span class="priority-badge badge-${p.priority}">${(p.priority||'medium').toUpperCase()}</span>
@@ -269,6 +301,7 @@ function openProject(id) {
     editProjectPriority.value = 'medium';
     editProjectDesc.value = '';
     setSelectedPeople([]);
+    setSelectedColour('editProjectColour', '');
     showProjectEditMode();
     renderTaskList([]);
   }
@@ -283,6 +316,7 @@ editProjectBtn.addEventListener('click', () => {
   editProjectPriority.value = p.priority||'medium';
   editProjectDesc.value = p.description||'';
   setSelectedPeople(p.people||[]);
+  setSelectedColour('editProjectColour', p.colour||'');
   showProjectEditMode();
 });
 
@@ -290,13 +324,14 @@ closeProjectModal.addEventListener('click', () => { projectModal.classList.add('
 addProjectBtn.addEventListener('click', () => openProject(null));
 
 saveProjectBtn.addEventListener('click', async () => {
-  const name = editProjectName.value.trim() || 'Untitled';
+  const name   = editProjectName.value.trim() || 'Untitled';
   const people = getSelectedPeople();
+  const colour = getSelectedColour('editProjectColour');
   if (currentProjectId) {
     const idx = projects.findIndex(p=>p.id===currentProjectId);
-    if (idx>=0) projects[idx] = { ...projects[idx], name, deadline:editProjectDeadline.value, priority:editProjectPriority.value, description:editProjectDesc.value.trim(), people, tasks:tempTasks };
+    if (idx>=0) projects[idx] = { ...projects[idx], name, deadline:editProjectDeadline.value, priority:editProjectPriority.value, description:editProjectDesc.value.trim(), people, colour, tasks:tempTasks };
   } else {
-    const newP = { id:uid(), name, deadline:editProjectDeadline.value, priority:editProjectPriority.value, description:editProjectDesc.value.trim(), people, tasks:tempTasks, created:Date.now(), createdBy:currentUser?.id||'neutral' };
+    const newP = { id:uid(), name, deadline:editProjectDeadline.value, priority:editProjectPriority.value, description:editProjectDesc.value.trim(), people, colour, tasks:tempTasks, created:Date.now(), createdBy:currentUser?.id||'neutral' };
     projects.push(newP);
     currentProjectId = newP.id;
   }
@@ -327,11 +362,10 @@ function renderTaskList(tasks) { tempTasks = JSON.parse(JSON.stringify(tasks)); 
 window.editTask = function(i) {
   const textEl = taskListEl.querySelectorAll('.task-text')[i];
   if (!textEl) return;
-  const original = tempTasks[i].text;
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'task-edit-input';
-  input.value = original;
+  input.value = tempTasks[i].text;
   textEl.replaceWith(input);
   input.focus();
   input.select();
@@ -345,7 +379,7 @@ window.editTask = function(i) {
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); commit(); }
-    if (e.key === 'Escape') { redrawTaskList(); } // cancel
+    if (e.key === 'Escape') { redrawTaskList(); }
   });
 };
 
@@ -400,17 +434,17 @@ function commitTask() {
 addTaskBtn.addEventListener('click', () => { setTimeout(()=>{ const i=document.getElementById('newTaskInput'); if(i) i.focus(); },50); });
 
 // ---- MOOD BOARD ----
-const moodGrid    = document.getElementById('moodGrid');
-const moodModal   = document.getElementById('moodModal');
-const addCardBtn  = document.getElementById('addCardBtn');
+const moodGrid       = document.getElementById('moodGrid');
+const moodModal      = document.getElementById('moodModal');
+const addCardBtn     = document.getElementById('addCardBtn');
 const closeMoodModal = document.getElementById('closeMoodModal');
 const saveMoodBtn    = document.getElementById('saveMoodBtn');
 const archiveMoodBtn = document.getElementById('archiveMoodBtn');
-const moodTitle = document.getElementById('moodTitle');
-const moodText  = document.getElementById('moodText');
-const moodImage = document.getElementById('moodImage');
-const moodAudio = document.getElementById('moodAudio');
-const moodTag   = document.getElementById('moodTag');
+const moodTitle      = document.getElementById('moodTitle');
+const moodText       = document.getElementById('moodText');
+const moodImage      = document.getElementById('moodImage');
+const moodAudio      = document.getElementById('moodAudio');
+const moodTag        = document.getElementById('moodTag');
 
 function isSoundCloud(url) { return url && url.includes('soundcloud.com'); }
 
@@ -459,32 +493,42 @@ archiveMoodBtn.addEventListener('click', async ()=>{
 window.openMoodCard = openMoodCard;
 
 // ---- NOTES ----
-const noteGrid    = document.getElementById('noteGrid');
-const noteModal   = document.getElementById('noteModal');
-const addNoteBtn  = document.getElementById('addNoteBtn');
+const noteGrid       = document.getElementById('noteGrid');
+const noteModal      = document.getElementById('noteModal');
+const addNoteBtn     = document.getElementById('addNoteBtn');
 const closeNoteModal = document.getElementById('closeNoteModal');
 const saveNoteBtn    = document.getElementById('saveNoteBtn');
 const deleteNoteBtn  = document.getElementById('deleteNoteBtn');
-const noteTitleEl  = document.getElementById('noteTitle');
-const noteTagEl    = document.getElementById('noteTag');
-const noteContentEl= document.getElementById('noteContent');
+const noteTitleEl    = document.getElementById('noteTitle');
+const noteTagEl      = document.getElementById('noteTag');
+const noteContentEl  = document.getElementById('noteContent');
 
 function renderNotes() {
   if (!notes.length) { noteGrid.innerHTML=`<div class="empty-state"><strong>NO NOTES YET</strong>hit + NEW NOTE to start writing</div>`; return; }
-  noteGrid.innerHTML = notes.map(n => `
-    <div class="note-card" onclick="openNote('${n.id}')">
+  noteGrid.innerHTML = notes.map(n => {
+    const colourStyle = n.colour ? `style="border-left:3px solid ${n.colour}"` : '';
+    return `
+    <div class="note-card" ${colourStyle} onclick="openNote('${n.id}')">
       ${n.tag?`<div class="note-card-tag">${escHtml(n.tag)}</div>`:''}
       <div class="note-card-title">${escHtml(n.title||'Untitled')}</div>
       <div class="note-card-preview">${escHtml(n.content||'')}</div>
       <div class="note-card-meta">${formatDate(new Date(n.created).toISOString().split('T')[0])}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function openNote(id) {
   const n = id ? notes.find(x=>x.id===id) : null;
   currentNoteId = id||null;
-  if (n) { noteTitleEl.value=n.title||''; noteTagEl.value=n.tag||''; noteContentEl.value=n.content||''; deleteNoteBtn.classList.remove('hidden'); }
-  else   { noteTitleEl.value=''; noteTagEl.value=''; noteContentEl.value=''; deleteNoteBtn.classList.add('hidden'); }
+  if (n) {
+    noteTitleEl.value=n.title||''; noteTagEl.value=n.tag||''; noteContentEl.value=n.content||'';
+    setSelectedColour('editNoteColour', n.colour||'');
+    deleteNoteBtn.classList.remove('hidden');
+  } else {
+    noteTitleEl.value=''; noteTagEl.value=''; noteContentEl.value='';
+    setSelectedColour('editNoteColour', '');
+    deleteNoteBtn.classList.add('hidden');
+  }
   noteModal.classList.remove('hidden');
 }
 
@@ -492,7 +536,8 @@ addNoteBtn.addEventListener('click', ()=>openNote(null));
 closeNoteModal.addEventListener('click', ()=>{ noteModal.classList.add('hidden'); currentNoteId=null; });
 
 saveNoteBtn.addEventListener('click', async ()=>{
-  const n = { title:noteTitleEl.value.trim()||'Untitled', tag:noteTagEl.value.trim(), content:noteContentEl.value.trim() };
+  const colour = getSelectedColour('editNoteColour');
+  const n = { title:noteTitleEl.value.trim()||'Untitled', tag:noteTagEl.value.trim(), content:noteContentEl.value.trim(), colour };
   if (currentNoteId) { const idx=notes.findIndex(x=>x.id===currentNoteId); if(idx>=0) notes[idx]={...notes[idx],...n}; }
   else notes.push({ id:uid(), ...n, created:Date.now(), createdBy:currentUser?.id||'neutral' });
   await save(); renderNotes(); noteModal.classList.add('hidden');
@@ -512,7 +557,6 @@ const archiveProjectList = document.getElementById('archiveProjectList');
 const archiveMoodList    = document.getElementById('archiveMoodList');
 
 function renderArchive() {
-  // archived projects
   if (!archive.projects.length) {
     archiveProjectList.innerHTML=`<div class="empty-state" style="padding:20px 20px"><strong style="font-size:18px">EMPTY</strong></div>`;
   } else {
@@ -529,7 +573,6 @@ function renderArchive() {
         </div>
       </div>`).join('');
   }
-  // archived mood cards
   if (!archive.moodCards.length) {
     archiveMoodList.innerHTML=`<div class="empty-state" style="padding:20px 20px"><strong style="font-size:18px">EMPTY</strong></div>`;
   } else {
